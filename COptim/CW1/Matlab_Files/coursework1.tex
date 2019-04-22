@@ -1,0 +1,217 @@
+\documentclass[12pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[latin9]{inputenc}
+\usepackage{textcomp}
+\usepackage{amstext}
+\usepackage{graphicx}
+\usepackage{amssymb}
+
+\makeatletter
+\providecommand{\tabularnewline}{\\}
+
+\usepackage{amssymb, comment}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{bm}
+\usepackage{latexsym}
+\usepackage{epsfig}
+\usepackage{hyperref}
+\usepackage[ruled,vlined]{algorithm2e}
+\setlength{\evensidemargin}{.25in}
+\setlength{\textwidth}{6in}
+\setlength{\topmargin}{-0.4in}
+\setlength{\textheight}{8.5in}
+\usepackage{fourier-orns}
+
+\textwidth=6in
+\oddsidemargin=0.25in
+\evensidemargin=0.25in
+\topmargin=-0.1in
+\footskip=0.8in
+\parindent=0.0cm
+\parskip=0.3cm
+\textheight=8.00in
+\setcounter{tocdepth} {3}
+\setcounter{secnumdepth} {2}
+\sloppy
+\numberwithin{equation}{section}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}{Lemma}[section]
+\newtheorem{corollary}{Corollary}[section]
+\newtheorem{definition}{Definition}[section]
+
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}[section]
+\newtheorem{answer}{\bf Answer}
+\newtheorem{exercise}{\bf Exercise}
+\newtheorem{example}{Example}[section]
+
+\newcommand{\N}{\mathbb N} % natural numbers 0,1,2,...
+\newcommand{\Z}{\mathbb Z}  % integers
+\newcommand{\R}{\mathbb R} % reals
+\newcommand{\C}{\mathbb C} % complex numbers
+\newcommand{\F}{\mathbb F} % finite fields
+\newcommand{\vect}[1]{\boldsymbol{#1}}
+\newcommand{\norm}[2]{\|#1\|_{#2}}
+\newcommand{\Conv}{{\bf Conv}}
+
+\newcommand{\floor}[1]{\left\lfloor {#1} \right\rfloor} % floor function
+\newcommand{\ceiling}[1]{\left\lceil {#1} \right\rceil} % ceiling function
+\newcommand{\binomial}[2]{\left( \begin{array}{c} {#1} \\ 
+                        {#2} \end{array} \right)} % binomial coefficients
+\newcommand{\modulo}[1]{ (\mbox{mod }{#1})} %congruences
+%\newcommand{\modulo}[1]{\quad (\mbox{mod }{#1})} %congruences
+\usepackage{enumerate}
+
+\newcommand{\ignore}[1]{} % useful for commenting things out 1 ignores, 0 puts it there 
+
+\makeatother
+\usepackage{subfigure}
+
+\title{
+C477: Computational Optimisation \\
+Coursework 1
+}
+\date{
+\begin{tabular}{ll}
+Handed out: & 13:00 26-10-2017 \\
+Due: & 19:00 14-11-2017
+\end{tabular}
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{exercise} (Recognising Hand-written Digits in the MNIST Dataset). \\[10pt]
+%
+{\bf Note 1:} This exercise develops interesting optimisation algorithms. Therefore, in your submitted solution, please do not use any pre-packaged optimisation routines such as Matlab's \texttt{fminsearch} or the Optimization Toolbox. \\[10pt]
+%
+{\bf Note 2:} We are providing several Matlab files for your use. But there is no \emph{requirement} to use our routines; please feel free to develop your own code. For this problem, please submit (i) a report answering the relevant mathematical questions and (ii) your modified \texttt{SolveMNIST\_Gradient.m} file or (if you're not using our routines) sufficient material to reproduce your results. \\[10pt]
+%
+{\bf Preliminaries:} This exercise uses first-order methods to build a classifier recognising hand-written digits from images. Instead of using the digit image pixel values directly, file \texttt{mnist.mat} provides random Fourier features for the classification task.\footnote{\url{gridworld.wordpress.com/2015/07/17/random-features-for-large-scale-kernel-machines/}} These features allow us to learn a nonlinear decision function with a linear classifier. We formulate the problem as multiclass classification with $n$ input features, $d = 10$ output labels (digits 0 -- 9), and $m$ training examples. \\[10pt]
+%
+The training data in Matlab file \texttt{mnist.mat} contains input features $\vect{X} \in \R^{m \times n}$ and output labels $\vect{y} \in \Z^m$ where $y_i \in \{0, \, 1, \, \ldots, \, 9\} \ \forall \, i \in \{1, \, \ldots, \, m \}$. The optimisation problem is to learn feature weights $\vect{B} \in \R^{n \times d}$ for each digit $\{0, \, 1, \, \ldots, \, 9\}$ by minimising the negative log-likelihood over $m$ training examples. We also include an $\ell_1$ regularisation term weighted by scalar $\lambda \in \R$ such that $\lambda > 0$:
+%
+\[
+\min\limits_{\vect{\beta_1}, \, \ldots, \, \vect{\beta_{10}}} \; g(\vect{B}) + h(\vect{B}) = \min\limits_{\vect{\beta_1}, \, \ldots, \, \vect{\beta_{10}}} \; \sum\limits_{i = 1}^m \left( \log \sum\limits_{k = 1}^{10} \exp \left( \vect{x_i}^{\top} \vect{\beta_k} \right) - \vect{x_i}^{\top} \vect{\beta_{y_i + 1}} \right) + \lambda \sum\limits_{k = 1}^{10} \norm{\vect{\beta_k}}{1},
+\]
+%
+where we define $\vect{\beta_k} \in \R^n \; \forall \, k \in \{ 1, \, \ldots, \, 10 \}$ and $\vect{x_i} \in \R^n \; \forall \, i \in \{1, \, \ldots, \, m \}$ as vectors within $\vect{B}$ and $\vect{X}$, respectively:
+%
+\[
+\vect{B} = 
+\left[ \begin{array}{cccc} 
+%
+| & | & & | \\
+\vect{\beta_1} & \vect{\beta_2} & \cdots & \vect{\beta_{10}} \\
+| & | & & | \\
+%
+\end{array}
+\right], \,
+%
+\vect{X} = 
+\left[ \begin{array}{ccc} 
+- & \vect{x_1}^{\top} & - \\
+- & \vect{x_2}^{\top} & - \\
+& \vdots \\
+- & \vect{x_m}^{\top} & - \\
+\end{array}
+\right].
+%
+\]
+%
+We define $\vect{Y} \in \R^{m \times 10}$ as the \emph{one-hot} encoding of the training labels: $Y_{i, \, k} = 1$ if example $i$ has label $k - 1$ and $Y_{i, \, k} = 0$ otherwise. We state (without proof) that the gradient of $g(\vect{B})$, the negative log-likelihood, is:
+%
+\[
+\nabla_{\vect{B}} g(\vect{B}) = \vect{X}^{\top} \left( \vect{Z} \exp \left( \vect{X} \vect{B} \right) - \vect{Y} \right),
+\]
+%
+where $\exp(\cdot)$ is applied elementwise and $\vect{Z} \in \R^{m \times m}$ is the diagonal matrix with:
+%
+\[
+Z_{ii} = \frac{1}{\sum_{k = 1}^{10} \exp \left( \vect{x_i}^{\top} \vect{\beta_k} \right)} \ \forall \, i \in \{1, \, \ldots, \, m \}.
+\]
+%
+{\bf Part 1.} Prove that the optimisation problem is convex. Proceed by decomposition, i.e., prove that:
+%
+\begin{enumerate}
+%
+\item Log-Sum-Exp $\left( \log \sum\limits_{k = 1}^{10} \exp \left( B_{j \, k} \right) \right)$ is convex;
+\phantom{hi} \hfill {\bf Marks=8} 
+%
+\item Composition of a convex function with an affine mapping $\left( \log \sum\limits_{k = 1}^{10} \exp \left( \vect{x_i}^{\top} \vect{\beta_k} \right) \right)$ is convex;
+\phantom{hi} \hfill {\bf Marks=3} 
+%
+\item Affine functions $\left( - \vect{x_i}^{\top} \vect{\beta_{y_i + 1}} \right)$ are convex;
+\phantom{hi} \hfill {\bf Marks=3} 
+%
+\item $\ell_1$ Regularisation $\norm{\vect{\beta_k}}{1}$ is convex;
+\phantom{hi} \hfill {\bf Marks=3} 
+%
+\item The entire optimisation problem is convex. 
+\phantom{hi} \hfill {\bf Marks=3} 
+%
+\end{enumerate}
+%
+{\bf Part 2.} The first-order methods covered in C477 assume the objective is continuously differentiable.\footnote{Extending first order methods to include special functions such as the 1-norm is not difficult; start by looking up the \emph{proximal gradient} method.} For our optimisation problem, $g(\vect{B}) \in \mathcal{C}^1$, but $h(\vect{B}) \notin \mathcal{C}^1$ 
+%
+\begin{enumerate}
+%
+\item Show that $h(\vect{B}) = \lambda \sum\limits_{k = 1}^{10} \norm{\vect{\beta_k}}{1} \notin \mathcal{C}^1$ \\
+\phantom{hi} \hfill {\bf Marks=5}
+%
+\item For the rest of the problem, we consider $\ell_2$ regularisation so that the optimisation problem becomes:
+%
+\[
+\min\limits_{\vect{\beta_1}, \, \ldots, \, \vect{\beta_{10}}} \; f(\vect{B}) = \min\limits_{\vect{\beta_1}, \, \ldots, \, \vect{\beta_{10}}} \; \sum\limits_{i = 1}^m \left( \log \sum\limits_{k = 1}^{10} \exp \left( \vect{x_i}^{\top} \vect{\beta_k} \right) - \vect{x_i}^{\top} \vect{\beta_{y_i + 1}} \right) + \lambda \sum\limits_{k = 1}^{10} \norm{\vect{\beta_k}}{2}^2,
+\]
+%
+Show that this new optimisation problem is convex and $f(\vect{B}) \in \mathcal{C}^1$. \\
+\phantom{hi} \hfill {\bf Marks=10}
+% 
+\item Starting from \texttt{SolveMNIST\_Gradient.m}, please run:
+\begin{center}
+\texttt{ReturnVal = SolveMNIST\_Gradient(0.0001, 5000, 0.0001, 1);}
+\end{center}
+%
+\texttt{SolveMNIST\_Gradient} will (soon) implement a gradient-based method. The algorithm runs with termination tolerance $\epsilon = 10^{-4}$, maximum 5000 iterations, constant step size $\alpha = 10^{-4}$, and regularisation parameter $\lambda = 1$.
+%
+Lines 60, 65, \& 70 of \texttt{SolveMNIST\_Gradient} are wrong. Rather than checking tolerances: 
+%
+\begin{align*}
+\begin{array}{ll}
+\norm{\nabla f(\vect{B}^{(j)})}{2} &< \epsilon, \\[2pt]
+\norm{ \vect{B}^{(j + 1)} - \vect{B}^{(j)} }{2} &< \epsilon, \\[2pt]
+\lvert f(\vect{B}^{(j + 1)}) - f(\vect{B}^{(j)}) \rvert &< \epsilon, 
+\end{array}
+\end{align*}
+%
+they are all set to 1. Please fix these lines so that \texttt{SolveMNIST\_Gradient.m} will terminate when either one of the tolerances is satisfied or the number of iterations is reached. Note that we have not covered matrix norms in C477 and we are therefore happy for you to use the vector norm, i.e., to compute the norm of the vector of decision variables and the gradient provided in the Matlab files.
+\phantom{hi} \hfill {\bf Marks=5} 
+%
+\item How do the tolerances in Part 2.3 correspond to the FONC, SONC, and SOSC? Show how each of Lines 60, 65, \& 70 in \texttt{SolveMNIST\_Gradient} now correspond to an optimality condition and state the relevant condition.
+\phantom{hi} \hfill {\bf Marks=10} 
+%
+\item Make gradient descent actually work! On line 43 of \texttt{SolveMNIST\_Gradient.m}, implement a constant step-size strategy:
+%
+\[
+\vect{B}^{(j + 1)} = \vect{B}^{(j)} - \alpha \nabla f(\vect{B}^{(j)})
+\]
+%
+Run the gradient descent algorithm. In your written report, provide a plot of the function value (\texttt{fcn\_val\_iter}) versus number of iterations. \\
+\phantom{hi} \hfill {\bf Marks=10} 
+%
+\item What would be an exact line search strategy for this algorithm? Write out the line search optimisation problem.
+%
+\phantom{hi} \hfill {\bf Marks=10} 
+%
+\item Implement a line search strategy such as Golden Section or a Secant-type method. Can you beat the constant step-size strategy? In your written report, please compare the constant step-size strategy to your new line search strategy. Provide a plot of the function value (\texttt{fcn\_val\_iter}) versus number of iterations for both the constant step size and line search strategy.
+\phantom{hi} \hfill {\bf Marks=30} 
+%
+\end{enumerate}
+%
+\end{exercise}
+
+\end{document}
