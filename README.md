@@ -1,2 +1,2 @@
 # Math-and-Optimization-of-ML
-CWs of these 2 courses
+CWs of Computational Optimization and Math of Machine Learning
